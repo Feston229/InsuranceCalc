@@ -1,0 +1,95 @@
+services:
+  api: &main_app
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: insurance_calc:${INSURANCE_CALC_VERSION:-latest}
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      INSURANCE_CALC_HOST: 0.0.0.0
+      INSURANCE_CALC_DB_HOST: insurance_calc-db
+      INSURANCE_CALC_DB_PORT: 5432
+      INSURANCE_CALC_DB_USER: insurance_calc
+      INSURANCE_CALC_DB_PASS: insurance_calc
+      INSURANCE_CALC_DB_BASE: insurance_calc
+      INSURANCE_CALC_REDIS_HOST: insurance_calc-redis
+      TESTKAFKA_KAFKA_BOOTSTRAP_SERVERS: '["insurance_calc-kafka:9092"]'
+
+  db:
+    image: postgres:16.3-bullseye
+    hostname: insurance_calc-db
+    environment:
+      POSTGRES_PASSWORD: "insurance_calc"
+      POSTGRES_USER: "insurance_calc"
+      POSTGRES_DB: "insurance_calc"
+    volumes:
+      - insurance_calc-db-data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: pg_isready -U insurance_calc
+      interval: 2s
+      timeout: 3s
+      retries: 40
+
+  migrator:
+    image: insurance_calc:${INSURANCE_CALC_VERSION:-latest}
+    restart: "no"
+    command: alembic upgrade head
+    environment:
+      INSURANCE_CALC_DB_HOST: insurance_calc-db
+      INSURANCE_CALC_DB_PORT: 5432
+      INSURANCE_CALC_DB_USER: insurance_calc
+      INSURANCE_CALC_DB_PASS: insurance_calc
+      INSURANCE_CALC_DB_BASE: insurance_calc
+    depends_on:
+      db:
+        condition: service_healthy
+
+  redis:
+    image: bitnami/redis:6.2.5
+    hostname: "insurance_calc-redis"
+    restart: always
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+    healthcheck:
+      test: redis-cli ping
+      interval: 1s
+      timeout: 3s
+      retries: 50
+
+  kafka:
+    image: bitnami/kafka:3.7.1-debian-12-r0
+    hostname: "insurance_calc-kafka"
+    environment:
+      KAFKA_CFG_NODE_ID: "0"
+      KAFKA_CFG_PROCESS_ROLES: "controller,broker"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@insurance_calc-kafka:9093"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+    # Uncomment it to connect from localhost.
+    # ports:
+    #   - 9094:9094
+    healthcheck:
+      test: kafka-topics.sh --list --bootstrap-server localhost:9092
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+
+
+volumes:
+  insurance_calc-db-data:
+    name: insurance_calc-db-data
