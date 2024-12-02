@@ -92,7 +92,7 @@ alembic downgrade <revision_id>
 To generate migrations you should run:
 ```bash
 # For automatic change detection.
-alembic revision --autogenerate
+alembic revision --autogenerate -m "<message>"
 
 # For empty file generation.
 alembic revision
