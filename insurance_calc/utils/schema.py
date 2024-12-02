@@ -2,6 +2,8 @@ from pydantic import BaseModel
 
 
 class Message(BaseModel):
-    """Simple message model."""
+    """
+    Base model for message responses.
+    """
 
     message: str

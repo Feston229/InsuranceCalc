@@ -1,18 +1,33 @@
-import os
-import shutil
-from pathlib import Path
+import asyncio
+import logging
 
+import typer
 import uvicorn
+
 from insurance_calc.gunicorn_runner import GunicornApplication
+from insurance_calc.log import configure_logging
+from insurance_calc.pre_start import db_deploy
 from insurance_calc.settings import settings
 
+cli = typer.Typer()
 
-def main() -> None:
+
+@cli.command()
+def deploy() -> None:
+    """Create initial data for the application."""
+
+    configure_logging()
+    asyncio.run(db_deploy())
+    logging.info("Initial data created")
+
+
+@cli.command()
+def run() -> None:
     """Entrypoint of the application."""
-    if settings.reload:
+
+    if settings.environment == "kubernetes" or settings.reload:
         uvicorn.run(
             "insurance_calc.web.application:get_app",
-            workers=settings.workers_count,
             host=settings.host,
             port=settings.port,
             reload=settings.reload,
@@ -34,5 +49,6 @@ def main() -> None:
             access_log_format='%r "-" %s "-" %Tf',  # noqa: WPS323
         ).run()
 
+
 if __name__ == "__main__":
-    main()
+    cli()

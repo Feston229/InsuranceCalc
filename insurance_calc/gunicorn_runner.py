@@ -10,7 +10,6 @@ except ImportError:
     uvloop = None  # type: ignore  # noqa: WPS440 (variables overlap)
 
 
-
 class UvicornWorker(BaseUvicornWorker):
     """
     Configuration for uvicorn workers.
@@ -49,7 +48,7 @@ class GunicornApplication(BaseApplication):
             "bind": f"{host}:{port}",
             "workers": workers,
             "worker_class": "insurance_calc.gunicorn_runner.UvicornWorker",
-            **kwargs
+            **kwargs,
         }
         self.app = app
         super().__init__()

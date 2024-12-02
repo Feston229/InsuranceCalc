@@ -1,32 +1,32 @@
-FROM python:3.11.4-slim-bullseye as prod
-RUN apt-get update && apt-get install -y \
+FROM python:3.12-alpine
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+  PYTHONUNBUFFERED=1
+
+# Install system dependencies
+RUN apk add --no-cache \
   gcc \
-  && rm -rf /var/lib/apt/lists/*
+  musl-dev \
+  python3-dev \
+  libffi-dev \
+  openssl-dev \
+  build-base \
+  linux-headers \
+  zlib-dev
 
-
-RUN pip install poetry==1.8.2
-
-# Configuring poetry
-RUN poetry config virtualenvs.create false
-RUN poetry config cache-dir /tmp/poetry_cache
+RUN pip install uv==0.5.4
 
 # Copying requirements of a project
-COPY pyproject.toml poetry.lock /app/src/
+COPY pyproject.toml /app/src/
+COPY uv.lock /app/src/
 WORKDIR /app/src
 
 # Installing requirements
-RUN --mount=type=cache,target=/tmp/poetry_cache poetry install --only main
-# Removing gcc
-RUN apt-get purge -y \
-  gcc \
-  && rm -rf /var/lib/apt/lists/*
-
-# Copying actuall application
+RUN uv sync --frozen --no-dev
 COPY . /app/src/
-RUN --mount=type=cache,target=/tmp/poetry_cache poetry install --only main
+RUN uv build .
 
-CMD ["/usr/local/bin/python", "-m", "insurance_calc"]
-
-FROM prod as dev
-
-RUN --mount=type=cache,target=/tmp/poetry_cache poetry install
+# Run migrations, deploy seed and start the application
+CMD uv run --frozen --no-dev alembic upgrade head && \
+  uv run --frozen --no-dev python -m insurance_calc deploy && \
+  uv run --frozen --no-dev python -m insurance_calc run

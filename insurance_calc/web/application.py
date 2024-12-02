@@ -1,13 +1,11 @@
-import logging
-
-from fastapi import FastAPI
-from fastapi.responses import UJSONResponse
-from insurance_calc.settings import settings
-from insurance_calc.web.api.router import api_router
 from importlib import metadata
 
-from insurance_calc.web.lifespan import lifespan_setup
+from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
+
 from insurance_calc.log import configure_logging
+from insurance_calc.web.api.router import api_router
+from insurance_calc.web.lifespan import lifespan_setup
 
 
 def get_app() -> FastAPI:
@@ -26,7 +24,7 @@ def get_app() -> FastAPI:
         docs_url="/api/docs",
         redoc_url="/api/redoc",
         openapi_url="/api/openapi.json",
-        default_response_class=UJSONResponse,
+        default_response_class=ORJSONResponse,
     )
 
     # Main router for the API.

@@ -1,4 +1,5 @@
 """insurance_calc models."""
+
 import pkgutil
 from pathlib import Path
 

@@ -1,14 +1,15 @@
-import os
 import enum
+import multiprocessing
+import secrets
 from pathlib import Path
 from tempfile import gettempdir
-from typing import List, Optional
+from typing import Any
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
 from yarl import URL
 
 TEMP_DIR = Path(gettempdir())
+
 
 class LogLevel(str, enum.Enum):  # noqa: WPS600
     """Possible log levels."""
@@ -29,15 +30,25 @@ class Settings(BaseSettings):
     with environment variables.
     """
 
+    secret_key: str = secrets.token_urlsafe(32)
+    algorithm: str = "HS256"
+
     host: str = "127.0.0.1"
     port: int = 8000
-    # quantity of workers for uvicorn
-    workers_count: int = 1
-    # Enable uvicorn reloading
-    reload: bool = False
 
     # Current environment
     environment: str = "dev"
+
+    # Mapping for environment-specific settings
+    _env_config: dict[str, Any] = {
+        "dev": {"reload": True, "workers_count": 1},
+        "prod": {
+            "reload": False,
+            "workers_count": multiprocessing.cpu_count()
+            if multiprocessing.cpu_count() <= 8
+            else 8,
+        },
+    }
 
     log_level: LogLevel = LogLevel.INFO
     # Variables for the database
@@ -49,14 +60,16 @@ class Settings(BaseSettings):
     db_echo: bool = False
 
     # Variables for Redis
-    redis_host: str = "insurance_calc-redis"
+    redis_host: str = "insurance-calc-redis"
     redis_port: int = 6379
-    redis_user: Optional[str] = None
-    redis_pass: Optional[str] = None
-    redis_base: Optional[int] = None
+    redis_user: str | None = None
+    redis_pass: str | None = None
+    redis_base: int | None = None
 
-    kafka_bootstrap_servers: List[str] = ["insurance_calc-kafka:9092"]
-
+    access_token_expire_minutes: int = 10080
+    admin_email: str = "admin@admin.com"
+    admin_password: str = "root"
+    kafka_bootstrap_servers: list[str] = ["insurance-calc-kafka:9092"]
 
     @property
     def db_url(self) -> URL:
@@ -73,6 +86,7 @@ class Settings(BaseSettings):
             password=self.db_pass,
             path=f"/{self.db_base}",
         )
+
     @property
     def redis_url(self) -> URL:
         """
@@ -92,12 +106,29 @@ class Settings(BaseSettings):
             path=path,
         )
 
-    model_config = SettingsConfigDict(
-        env_file = ".env",
-        env_prefix = "INSURANCE_CALC_",
-        env_file_encoding = "utf-8",
-    )
+    @property
+    def reload(self) -> bool:
+        """
+        Reload the application on changes.
 
+        :return: reload flag.
+        """
+        return self._env_config[self.environment].get("reload", False)
+
+    @property
+    def workers_count(self) -> int:
+        """
+        Number of worker processes (only for gunicorn).
+
+        :return: number of worker processes.
+        """
+        return self._env_config[self.environment].get("workers_count", 1)
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_prefix="INSURANCE_CALC_",
+        env_file_encoding="utf-8",
+    )
 
 
 settings = Settings()

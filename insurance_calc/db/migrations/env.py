@@ -2,8 +2,10 @@ import asyncio
 from logging.config import fileConfig
 
 from alembic import context
+from alembic.script import ScriptDirectory
 from sqlalchemy.ext.asyncio.engine import create_async_engine
 from sqlalchemy.future import Connection
+
 from insurance_calc.db.meta import meta
 from insurance_calc.db.models import load_all_models
 from insurance_calc.settings import settings
@@ -60,7 +62,11 @@ def do_run_migrations(connection: Connection) -> None:
 
     :param connection: connection to the database.
     """
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        process_revision_directives=process_revision_directives,
+    )
 
     with context.begin_transaction():
         context.run_migrations()
@@ -77,6 +83,24 @@ async def run_migrations_online() -> None:
 
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
+
+
+def process_revision_directives(context, _revision, directives):
+    # extract Migration
+    migration_script = directives[0]
+    # extract current head revision
+    head_revision = ScriptDirectory.from_config(context.config).get_current_head()
+
+    if head_revision is None:
+        # edge case with first migration
+        new_rev_id = 1
+    else:
+        # default branch with incrementation
+        last_rev_id = int(head_revision)
+        new_rev_id = last_rev_id + 1
+    # fill zeros up to 3 digits: 1 -> 001
+    migration_script.rev_id = f"{new_rev_id:03}"
+
 
 loop = asyncio.get_event_loop()
 if context.is_offline_mode():

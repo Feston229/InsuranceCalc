@@ -1,5 +1,6 @@
 from aiokafka import AIOKafkaProducer
 from fastapi import APIRouter, Depends
+
 from insurance_calc.services.kafka.dependencies import get_kafka_producer
 from insurance_calc.web.api.kafka.schema import KafkaMessage
 

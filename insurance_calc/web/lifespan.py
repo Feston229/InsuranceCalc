@@ -1,15 +1,12 @@
-import logging
-from typing import AsyncGenerator, Awaitable, Callable
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from insurance_calc.settings import settings
-from insurance_calc.services.redis.lifespan import (init_redis,
-                                                                   shutdown_redis)
-from insurance_calc.services.kafka.lifespan import (init_kafka,
-                                                                   shutdown_kafka)
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.orm import sessionmaker
+
+from insurance_calc.services.kafka.lifespan import init_kafka, shutdown_kafka
+from insurance_calc.services.redis.lifespan import init_redis, shutdown_redis
+from insurance_calc.settings import settings
 
 
 def _setup_db(app: FastAPI) -> None:  # pragma: no cover
@@ -32,7 +29,9 @@ def _setup_db(app: FastAPI) -> None:  # pragma: no cover
 
 
 @asynccontextmanager
-async def lifespan_setup(app: FastAPI) -> AsyncGenerator[None, None]:  # pragma: no cover
+async def lifespan_setup(
+    app: FastAPI,
+) -> AsyncGenerator[None, None]:  # pragma: no cover
     """
     Actions to run on application startup.
 
@@ -51,6 +50,6 @@ async def lifespan_setup(app: FastAPI) -> AsyncGenerator[None, None]:  # pragma:
 
     yield
     await app.state.db_engine.dispose()
-    
+
     await shutdown_redis(app)
     await shutdown_kafka(app)

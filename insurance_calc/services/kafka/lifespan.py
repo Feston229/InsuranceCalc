@@ -1,5 +1,6 @@
 from aiokafka import AIOKafkaProducer
 from fastapi import FastAPI
+
 from insurance_calc.settings import settings
 
 

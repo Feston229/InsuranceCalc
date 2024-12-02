@@ -1,0 +1,42 @@
+{
+    "Role": [
+        {
+            "id": 1,
+            "name": "Admin"
+        },
+        {
+            "id": 2,
+            "name": "User"
+        }
+    ],
+    "Insurance": {
+        "2024-04-01": [
+            {
+                "cargo_type": "Glass",
+                "rate": 0.01
+            },
+            {
+                "cargo_type": "Plastic",
+                "rate": 0.02
+            },
+            {
+                "cargo_type": "Wood",
+                "rate": 0.03
+            }
+        ],
+        "2024-05-01": [
+            {
+                "cargo_type": "Glass",
+                "rate": 0.015
+            },
+            {
+                "cargo_type": "Plastic",
+                "rate": 0.025
+            },
+            {
+                "cargo_type": "Wood",
+                "rate": 0.04
+            }
+        ]
+    }
+}
